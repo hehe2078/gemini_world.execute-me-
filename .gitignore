@@ -1,0 +1,18 @@
+# C++ 二进制产物与分发包
+gemini_mv
+gemini_mv.exe
+*.zip
+build_win/
+dist_windows/
+
+# C++ 源码与构建脚本
+CMakeLists.txt
+Makefile
+Makefile.win
+src/
+include/
+tools/
+fonts/
+
+# 音频与媒体文件
+*.mp3

@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GEMINI.EXECUTE(ME); — Gemini 双子星多模态终端 MV</title>
+<style>
+  @font-face {
+    font-family: 'JetBrains Mono';
+    src: url('fonts/JetBrainsMono-Regular.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+  }
+  :root {
+    --bg: #030409;
+    --bezel: #101322;
+    --bezel-border: #1e243e;
+    --crt-amber: #ffb74d;
+    --crt-cyan: #38bdf8;
+    --crt-blue: #4285f4;
+    --crt-purple: #c084fc;
+    --crt-pink: #f472b6;
+    --crt-red: #ff3366;
+    --crt-green: #34d399;
+    --crt-dim: #475569;
+    --crt-dimmer: #1e293b;
+    --crt-white: #ffffff;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: #010206;
+    overflow: hidden;
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, "DejaVu Sans Mono", monospace;
+    -webkit-font-smoothing: antialiased;
+    display: flex; align-items: center; justify-content: center;
+    color: #e2e8f0;
+  }
+
+  /* 复古 CRT 监视器外壳 */
+  #monitor {
+    position: relative;
+    width: 96vw; max-width: 1440px;
+    height: 92vh; max-height: 890px;
+    background: radial-gradient(circle at 50% 20%, #171c33 0%, #0c0f1c 85%, #05070d 100%);
+    border: 14px solid #14182b;
+    border-radius: 30px;
+    box-shadow: 0 0 80px rgba(0,0,0,.95), inset 0 0 25px rgba(0,0,0,.9), 0 0 35px rgba(56,189,248,.14);
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden; padding: 6px;
+    transition: transform 0.05s ease-out;
+  }
+
+  #monitor.shake {
+    animation: screenShake 0.08s infinite alternate;
+  }
+  @keyframes screenShake {
+    0% { transform: translate(1px, -1px); }
+    100% { transform: translate(-1px, 1px); }
+  }
+
+  /* CRT 曲面荧光屏视口 */
+  #screen {
+    position: relative;
+    width: 100%; height: 100%;
+    background: var(--bg);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: inset 0 0 60px rgba(0,0,0,.98);
+  }
+
+  canvas#cv {
+    display: block;
+    width: 100%; height: 100%;
+  }
+
+  /* CRT 扫描线 */
+  #scan {
+    position: absolute; inset: 0;
+    pointer-events: none; z-index: 20;
+    opacity: .38;
+    background: repeating-linear-gradient(to bottom, rgba(0,0,0,0) 0 2px, rgba(0,0,0,.35) 2px 3px);
+  }
+
+  /* CRT 暗角与曲面反光 */
+  #vig {
+    position: absolute; inset: 0;
+    pointer-events: none; z-index: 21;
+    background: radial-gradient(ellipse at 50% 50%, rgba(0,0,0,0) 55%, rgba(2,3,10,.86) 100%);
+  }
+
+  /* 荧光管泛光 */
+  #glow {
+    position: absolute; inset: 0;
+    pointer-events: none; z-index: 22;
+    background: radial-gradient(circle at 50% 50%, rgba(56,189,248,.03) 0%, rgba(147,51,234,.02) 60%, transparent 100%);
+  }
+
+  /* 关机/开机电子束效果 */
+  #beam {
+    position: absolute; inset: 0;
+    background: #000;
+    z-index: 30;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  #beam.power-off {
+    opacity: 1;
+    animation: crtOff 0.45s forwards;
+  }
+  @keyframes crtOff {
+    0% { transform: scale(1, 1); filter: brightness(2); background: #fff; }
+    50% { transform: scale(1, 0.005); background: #ffb74d; }
+    90% { transform: scale(0.005, 0.005); background: #ff3366; }
+    100% { transform: scale(0, 0); background: #000; }
+  }
+
+  /* ---------- HUD 控制台 ---------- */
+  #hud {
+    position: fixed; left: 50%; bottom: 12px;
+    transform: translateX(-50%);
+    z-index: 100;
+    display: flex; align-items: center; gap: 10px;
+    padding: 7px 18px;
+    background: rgba(10, 14, 30, 0.94);
+    border: 1px solid #283359;
+    border-radius: 24px;
+    font: 12px ui-monospace, Menlo, Consolas, monospace;
+    color: #93c5fd;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.85);
+    backdrop-filter: blur(10px);
+    transition: opacity .4s ease, transform .4s ease;
+  }
+  #hud.autohide { opacity: 0.12; }
+  #hud:hover { opacity: 1 !important; }
+
+  #hud button, #hud label.file, #hud select {
+    background: #151b36;
+    color: #e0f2fe;
+    border: 1px solid #334275;
+    border-radius: 6px;
+    padding: 5px 11px;
+    cursor: pointer;
+    font: 12px inherit;
+    display: inline-flex; align-items: center; gap: 5px;
+    transition: all .2s;
+  }
+  #hud button:hover, #hud label.file:hover {
+    border-color: #38bdf8;
+    color: #fff;
+    box-shadow: 0 0 12px rgba(56,189,248,0.35);
+  }
+  #hud button.active {
+    background: #ff3366;
+    border-color: #ff3366;
+    color: #fff;
+    box-shadow: 0 0 15px rgba(255,51,102,0.6);
+  }
+  #hud input[type=file] { display: none; }
+
+  #barContainer {
+    position: relative;
+    width: 260px; height: 8px;
+    background: #0d1224;
+    border-radius: 4px;
+    cursor: pointer;
+    border: 1px solid #232d52;
+  }
+  #barFill {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, #38bdf8, #818cf8, #c084fc, #f472b6, #ffb74d);
+    border-radius: 4px;
+    position: relative;
+  }
+  #barFill::after {
+    content: '';
+    position: absolute; right: -3px; top: -2px;
+    width: 12px; height: 12px;
+    background: #fff;
+    border-radius: 50%;
+    box-shadow: 0 0 8px #38bdf8;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  #barContainer:hover #barFill::after { opacity: 1; }
+
+  #tlabel {
+    min-width: 82px;
+    text-align: right;
+    color: #bae6fd;
+    font-weight: bold;
+  }
+
+  .chap-tag {
+    color: #ffb74d;
+    padding: 2px 6px;
+    border: 1px solid #ffb74d44;
+    border-radius: 4px;
+    font-size: 11px;
+  }
+
+  /* 提示框 */
+  #toast {
+    position: fixed; left: 50%; bottom: 68px;
+    transform: translateX(-50%);
+    z-index: 110;
+    padding: 8px 18px;
+    border-radius: 8px;
+    background: rgba(12, 17, 36, 0.96);
+    border: 1px solid #38bdf8;
+    color: #e0f2fe;
+    font: 12px ui-monospace, Menlo, Consolas, monospace;
+    opacity: 0; pointer-events: none;
+    transition: opacity .25s, transform .25s;
+    box-shadow: 0 0 25px rgba(56,189,248,0.45);
+  }
+  #toast.on { opacity: 1; transform: translateX(-50%) translateY(-4px); }
+
+  #drop {
+    position: fixed; inset: 0;
+    z-index: 105; display: none; pointer-events: none;
+    background: rgba(56, 189, 248, 0.12);
+    border: 4px dashed #38bdf8;
+    align-items: center; justify-content: center;
+    color: #e0f2fe; font: 20px ui-monospace, Menlo, Consolas, monospace;
+  }
+  #drop.on { display: flex; }
+</style>
+</head>
+<body>
+
+<div id="monitor">
+  <div id="screen">
+    <canvas id="cv"></canvas>
+    <div id="scan"></div>
+    <div id="vig"></div>
+    <div id="glow"></div>
+    <div id="beam"></div>
+  </div>
+</div>
+
+<div id="hud">
+  <label class="file" for="fileInput" title="载入本地音频">📂 载入音频</label>
+  <input type="file" id="fileInput" accept="audio/*">
+  <button id="playBtn" disabled>▶ 播放</button>
+  <span id="tlabel">00:00 / 03:32</span>
+  <div id="barContainer" title="点击或拖动跳转进度">
+    <div id="barFill"></div>
+  </div>
+  <span id="chapTag" class="chap-tag">01 / CREATION</span>
+  <button id="recordBtn" title="将当前播放录制并导出为 WebM/MP4 视频文件">⏺ 导出视频</button>
+  <button id="fsBtn" title="全屏模式 (F)">⛶ 全屏</button>
+</div>
+
+<div id="toast"></div>
+<div id="drop">松开鼠标以载入音频文件至 Gemini 终端</div>
+
+<script src="gemini_world_execute_me_v3.js"></script>
+</body>
+</html>
