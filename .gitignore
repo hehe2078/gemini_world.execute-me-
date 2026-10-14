@@ -16,3 +16,6 @@ fonts/
 
 # 音频与媒体文件
 *.mp3
+
+# 本地 C++ 文档备份
+README_CPP.md
